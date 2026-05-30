@@ -40,13 +40,18 @@ module falcon_accel (
   logic busy;
   logic done;
 
+  logic [31:0] u;
   logic [31:0] x;
-  logic [31:0] y;
+  logic [31:0] s;
 
   logic [31:0] mont_z;
   logic [31:0] mont_w;
   logic [31:0] mont_t;
-  logic [31:0] mont_res;
+  logic [31:0] v_mont;
+
+  logic [31:0] add_tmp;
+  logic [31:0] add_res;
+  logic [31:0] sub_res;
 
   logic unused_wstrb;
   assign unused_wstrb = ^reg_req_i.wstrb;
@@ -65,17 +70,32 @@ module falcon_accel (
   assign done = (state_q == DONE);
 
   always_comb begin
-    x = data_q[0];
-    y = data_q[1];
+    u = data_q[0];
+    x = data_q[1];
+    s = data_q[2];
 
-    mont_z = x * y;
+    mont_z = x * s;
     mont_w = ((mont_z * Q0I) & 32'h0000FFFF) * Q;
     mont_t = (mont_z + mont_w) >> 16;
 
     if (mont_t >= Q) begin
-      mont_res = mont_t - Q;
+      v_mont = mont_t - Q;
     end else begin
-      mont_res = mont_t;
+      v_mont = mont_t;
+    end
+
+    add_tmp = u + v_mont;
+
+    if (add_tmp >= Q) begin
+      add_res = add_tmp - Q;
+    end else begin
+      add_res = add_tmp;
+    end
+
+    if (u >= v_mont) begin
+      sub_res = u - v_mont;
+    end else begin
+      sub_res = u + Q - v_mont;
     end
   end
 
@@ -98,7 +118,9 @@ module falcon_accel (
 
       RUN: begin
         if (cycle_cnt_q == LATENCY_CYCLES[3:0] - 1) begin
-          data_d[0] = mont_res;
+          data_d[0] = add_res;
+          data_d[1] = sub_res;
+          data_d[2] = v_mont;
 
           cycle_cnt_d = 4'd0;
           state_d     = DONE;
