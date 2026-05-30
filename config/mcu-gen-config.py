@@ -143,8 +143,12 @@ def gr_heep_config():
 
     # External peripherals
     ext_periph = {
-            "falcon_accel": {
+            "falcon_ntt_accel": {
                     "offset": 0x00000000,
+                    "length": 0x00001000,
+            },
+            "falcon_intt_accel": {
+                    "offset": 0x00001000,
                     "length": 0x00001000,
             },
         #     "peripheral_0": {

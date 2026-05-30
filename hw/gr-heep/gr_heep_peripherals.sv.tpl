@@ -163,14 +163,32 @@ module gr_heep_peripherals (
 
     // Instantiate here the external peripherals
     % for a_slave in gr_heep["peripherals"]:
-        % if (a_slave['name'] == "FalconAccel"):
-          falcon_accel falcon_accel_i (
+        % if (a_slave['name'] == "FalconNttAccel"):
+          falcon_ntt_accel falcon_ntt_accel_i (
               .clk_i(clk_i),
               .rst_ni(rst_ni),
-              .reg_req_i(gr_heep_peripheral_req[gr_heep_pkg::FalconAccelPeriphIdx]),
-              .reg_rsp_o(gr_heep_peripheral_rsp[gr_heep_pkg::FalconAccelPeriphIdx])
+              .reg_req_i(gr_heep_peripheral_req[gr_heep_pkg::FalconNttAccelPeriphIdx]),
+              .reg_rsp_o(gr_heep_peripheral_rsp[gr_heep_pkg::FalconNttAccelPeriphIdx])
           );
         % endif
+
+        % if (a_slave['name'] == "FalconInttAccel"):
+          falcon_intt_accel falcon_intt_accel_i (
+              .clk_i(clk_i),
+              .rst_ni(rst_ni),
+              .reg_req_i(gr_heep_peripheral_req[gr_heep_pkg::FalconInttAccelPeriphIdx]),
+              .reg_rsp_o(gr_heep_peripheral_rsp[gr_heep_pkg::FalconInttAccelPeriphIdx])
+          );
+        % endif
+        
+       // % if (a_slave['name'] == "FalconAccel"):
+       //   falcon_accel falcon_accel_i (
+       //       .clk_i(clk_i),
+       //       .rst_ni(rst_ni),
+       //       .reg_req_i(gr_heep_peripheral_req[gr_heep_pkg::FalconAccelPeriphIdx]),
+       //       .reg_rsp_o(gr_heep_peripheral_rsp[gr_heep_pkg::FalconAccelPeriphIdx])
+       //   );
+       // % endif
 
         // % if (a_slave['name'] == "TestIp"):
         //   // Test IP
