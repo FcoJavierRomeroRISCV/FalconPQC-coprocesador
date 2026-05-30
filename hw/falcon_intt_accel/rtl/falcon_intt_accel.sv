@@ -12,6 +12,13 @@ module falcon_intt_accel (
   localparam logic [31:0] Q   = 32'd12289;
   localparam logic [31:0] Q0I = 32'd12287;
 
+  localparam logic [31:0] IGMB_1 = 32'd4401;
+  localparam logic [31:0] IGMB_2 = 32'd1081;
+  localparam logic [31:0] IGMB_3 = 32'd1229;
+
+  // For n = 4, ni is computed from R = 4091 by the same logic used in mq_iNTT.
+  localparam logic [31:0] NI_N4 = 32'd1023;
+
   localparam logic [11:0] CTRL_OFFSET   = 12'h000;
   localparam logic [11:0] STATUS_OFFSET = 12'h004;
   localparam logic [11:0] DATA0_OFFSET  = 12'h008;
@@ -40,19 +47,6 @@ module falcon_intt_accel (
   logic busy;
   logic done;
 
-  logic [31:0] u;
-  logic [31:0] v;
-  logic [31:0] s;
-
-  logic [31:0] add_tmp;
-  logic [31:0] add_res;
-  logic [31:0] sub_res;
-
-  logic [31:0] mont_z;
-  logic [31:0] mont_w;
-  logic [31:0] mont_t;
-  logic [31:0] mont_res;
-
   logic unused_wstrb;
   assign unused_wstrb = ^reg_req_i.wstrb;
 
@@ -69,35 +63,68 @@ module falcon_intt_accel (
   assign busy = (state_q == RUN);
   assign done = (state_q == DONE);
 
-  always_comb begin
-    u = data_q[0];
-    v = data_q[1];
-    s = data_q[2];
-
-    add_tmp = u + v;
-
-    if (add_tmp >= Q) begin
-      add_res = add_tmp - Q;
-    end else begin
-      add_res = add_tmp;
+  function automatic logic [31:0] mq_add(
+      input logic [31:0] a,
+      input logic [31:0] b
+  );
+    logic [31:0] tmp;
+    begin
+      tmp = a + b;
+      if (tmp >= Q) begin
+        mq_add = tmp - Q;
+      end else begin
+        mq_add = tmp;
+      end
     end
+  endfunction
 
-    if (u >= v) begin
-      sub_res = u - v;
-    end else begin
-      sub_res = u + Q - v;
+  function automatic logic [31:0] mq_sub(
+      input logic [31:0] a,
+      input logic [31:0] b
+  );
+    begin
+      if (a >= b) begin
+        mq_sub = a - b;
+      end else begin
+        mq_sub = a + Q - b;
+      end
     end
+  endfunction
 
-    mont_z = sub_res * s;
-    mont_w = ((mont_z * Q0I) & 32'h0000FFFF) * Q;
-    mont_t = (mont_z + mont_w) >> 16;
+  function automatic logic [31:0] mq_montymul(
+      input logic [31:0] x,
+      input logic [31:0] y
+  );
+    logic [31:0] z;
+    logic [31:0] w;
+    logic [31:0] t;
+    begin
+      z = x * y;
+      w = ((z * Q0I) & 32'h0000FFFF) * Q;
+      t = (z + w) >> 16;
 
-    if (mont_t >= Q) begin
-      mont_res = mont_t - Q;
-    end else begin
-      mont_res = mont_t;
+      if (t >= Q) begin
+        mq_montymul = t - Q;
+      end else begin
+        mq_montymul = t;
+      end
     end
-  end
+  endfunction
+
+  task automatic intt_butterfly(
+      input  logic [31:0] in_u,
+      input  logic [31:0] in_v,
+      input  logic [31:0] in_s,
+      output logic [31:0] out_u,
+      output logic [31:0] out_v
+  );
+    logic [31:0] w;
+    begin
+      out_u = mq_add(in_u, in_v);
+      w     = mq_sub(in_u, in_v);
+      out_v = mq_montymul(w, in_s);
+    end
+  endtask
 
   always_comb begin
     state_d     = state_q;
@@ -118,9 +145,31 @@ module falcon_intt_accel (
 
       RUN: begin
         if (cycle_cnt_q == LATENCY_CYCLES[3:0] - 1) begin
-          data_d[0] = add_res;
-          data_d[1] = mont_res;
-          data_d[2] = sub_res;
+          logic [31:0] s1_a0;
+          logic [31:0] s1_a1;
+          logic [31:0] s1_a2;
+          logic [31:0] s1_a3;
+
+          logic [31:0] s2_a0;
+          logic [31:0] s2_a1;
+          logic [31:0] s2_a2;
+          logic [31:0] s2_a3;
+
+          // Stage 1: t = 1, m = 4, hm = 2
+          // butterflies (a0,a1) with iGMb[2], (a2,a3) with iGMb[3]
+          intt_butterfly(data_q[0], data_q[1], IGMB_2, s1_a0, s1_a1);
+          intt_butterfly(data_q[2], data_q[3], IGMB_3, s1_a2, s1_a3);
+
+          // Stage 2: t = 2, m = 2, hm = 1
+          // butterflies (a0,a2) and (a1,a3) with iGMb[1]
+          intt_butterfly(s1_a0, s1_a2, IGMB_1, s2_a0, s2_a2);
+          intt_butterfly(s1_a1, s1_a3, IGMB_1, s2_a1, s2_a3);
+
+          // Final scaling by ni for n = 4.
+          data_d[0] = mq_montymul(s2_a0, NI_N4);
+          data_d[1] = mq_montymul(s2_a1, NI_N4);
+          data_d[2] = mq_montymul(s2_a2, NI_N4);
+          data_d[3] = mq_montymul(s2_a3, NI_N4);
 
           cycle_cnt_d = 4'd0;
           state_d     = DONE;
