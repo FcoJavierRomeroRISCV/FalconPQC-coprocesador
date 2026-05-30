@@ -9,6 +9,8 @@ module falcon_accel (
   localparam int unsigned NUM_WORDS = 4;
   localparam int unsigned LATENCY_CYCLES = 8;
 
+  localparam logic [31:0] Q = 32'd12289;
+
   localparam logic [11:0] CTRL_OFFSET   = 12'h000;
   localparam logic [11:0] STATUS_OFFSET = 12'h004;
   localparam logic [11:0] DATA0_OFFSET  = 12'h008;
@@ -37,6 +39,12 @@ module falcon_accel (
   logic busy;
   logic done;
 
+  logic [31:0] u;
+  logic [31:0] v;
+  logic [31:0] add_tmp;
+  logic [31:0] add_res;
+  logic [31:0] sub_res;
+
   logic unused_wstrb;
   assign unused_wstrb = ^reg_req_i.wstrb;
 
@@ -52,6 +60,25 @@ module falcon_accel (
 
   assign busy = (state_q == RUN);
   assign done = (state_q == DONE);
+
+  always_comb begin
+    u = data_q[0];
+    v = data_q[1];
+
+    add_tmp = u + v;
+
+    if (add_tmp >= Q) begin
+      add_res = add_tmp - Q;
+    end else begin
+      add_res = add_tmp;
+    end
+
+    if (u >= v) begin
+      sub_res = u - v;
+    end else begin
+      sub_res = u + Q - v;
+    end
+  end
 
   always_comb begin
     state_d     = state_q;
@@ -72,9 +99,8 @@ module falcon_accel (
 
       RUN: begin
         if (cycle_cnt_q == LATENCY_CYCLES[3:0] - 1) begin
-          for (int i = 0; i < NUM_WORDS; i++) begin
-            data_d[i] = data_q[i] + 32'd1;
-          end
+          data_d[0] = add_res;
+          data_d[1] = sub_res;
 
           cycle_cnt_d = 4'd0;
           state_d     = DONE;

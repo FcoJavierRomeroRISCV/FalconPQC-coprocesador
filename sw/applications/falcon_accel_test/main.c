@@ -17,23 +17,30 @@
 #define FALCON_ACCEL_STATUS_DONE      0x1
 #define FALCON_ACCEL_STATUS_BUSY      0x2
 
-#define NUM_WORDS 4
+#define FALCON_Q 12289u
 
-static const uint32_t data_offsets[NUM_WORDS] = {
-    FALCON_ACCEL_DATA0_OFFSET,
-    FALCON_ACCEL_DATA1_OFFSET,
-    FALCON_ACCEL_DATA2_OFFSET,
-    FALCON_ACCEL_DATA3_OFFSET,
-};
+static uint32_t mod_add_ref(uint32_t u, uint32_t v) {
+    uint32_t tmp = u + v;
+    if (tmp >= FALCON_Q) {
+        tmp -= FALCON_Q;
+    }
+    return tmp;
+}
 
-int main(void) {
-    mmio_region_t falcon_accel =
-        mmio_region_from_addr((uintptr_t)FALCON_ACCEL_PERIPH_START_ADDRESS);
+static uint32_t mod_sub_ref(uint32_t u, uint32_t v) {
+    if (u >= v) {
+        return u - v;
+    } else {
+        return u + FALCON_Q - v;
+    }
+}
 
-    uint32_t input[NUM_WORDS] = {10, 20, 30, 40};
-    uint32_t output[NUM_WORDS];
-
-    printf("Falcon accelerator small buffer test\n");
+static int run_test(mmio_region_t falcon_accel, uint32_t u, uint32_t v) {
+    uint32_t status;
+    uint32_t add_hw;
+    uint32_t sub_hw;
+    uint32_t add_ref = mod_add_ref(u, v);
+    uint32_t sub_ref = mod_sub_ref(u, v);
 
     mmio_region_write32(
         falcon_accel,
@@ -41,13 +48,8 @@ int main(void) {
         FALCON_ACCEL_CTRL_CLEAR_DONE
     );
 
-    for (int i = 0; i < NUM_WORDS; i++) {
-        mmio_region_write32(
-            falcon_accel,
-            data_offsets[i],
-            input[i]
-        );
-    }
+    mmio_region_write32(falcon_accel, FALCON_ACCEL_DATA0_OFFSET, u);
+    mmio_region_write32(falcon_accel, FALCON_ACCEL_DATA1_OFFSET, v);
 
     mmio_region_write32(
         falcon_accel,
@@ -55,7 +57,6 @@ int main(void) {
         FALCON_ACCEL_CTRL_START
     );
 
-    uint32_t status;
     do {
         status = mmio_region_read32(
             falcon_accel,
@@ -63,28 +64,41 @@ int main(void) {
         );
     } while ((status & FALCON_ACCEL_STATUS_DONE) == 0);
 
+    add_hw = mmio_region_read32(falcon_accel, FALCON_ACCEL_DATA0_OFFSET);
+    sub_hw = mmio_region_read32(falcon_accel, FALCON_ACCEL_DATA1_OFFSET);
+
+    printf("u=%u v=%u\n", u, v);
     printf("STATUS = 0x%08x\n", status);
+    printf("ADD hw=%u ref=%u\n", add_hw, add_ref);
+    printf("SUB hw=%u ref=%u\n", sub_hw, sub_ref);
+
+    if ((add_hw == add_ref) && (sub_hw == sub_ref)) {
+        printf("Test PASS\n");
+        return 1;
+    } else {
+        printf("Test FAIL\n");
+        return 0;
+    }
+}
+
+int main(void) {
+    mmio_region_t falcon_accel =
+        mmio_region_from_addr((uintptr_t)FALCON_ACCEL_PERIPH_START_ADDRESS);
 
     int pass = 1;
 
-    for (int i = 0; i < NUM_WORDS; i++) {
-        output[i] = mmio_region_read32(
-            falcon_accel,
-            data_offsets[i]
-        );
+    printf("Falcon modular arithmetic test\n");
 
-        printf("DATA[%d] in=%u out=%u\n", i, input[i], output[i]);
-
-        if (output[i] != input[i] + 1) {
-            pass = 0;
-        }
-    }
+    pass &= run_test(falcon_accel, 10000, 5000);
+    pass &= run_test(falcon_accel, 3000, 5000);
+    pass &= run_test(falcon_accel, 100, 200);
+    pass &= run_test(falcon_accel, 12288, 1);
 
     if (pass) {
-        printf("Falcon accelerator small buffer test PASS\n");
+        printf("Falcon modular arithmetic test PASS\n");
         return 0;
     } else {
-        printf("Falcon accelerator small buffer test FAIL\n");
+        printf("Falcon modular arithmetic test FAIL\n");
         return 1;
     }
 }
