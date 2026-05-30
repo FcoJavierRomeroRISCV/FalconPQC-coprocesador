@@ -163,6 +163,15 @@ module gr_heep_peripherals (
 
     // Instantiate here the external peripherals
     % for a_slave in gr_heep["peripherals"]:
+        % if (a_slave['name'] == "FalconAccel"):
+          falcon_accel falcon_accel_i (
+              .clk_i(clk_i),
+              .rst_ni(rst_ni),
+              .reg_req_i(gr_heep_peripheral_req[gr_heep_pkg::FalconAccelPeriphIdx]),
+              .reg_rsp_o(gr_heep_peripheral_rsp[gr_heep_pkg::FalconAccelPeriphIdx])
+          );
+        % endif
+
         // % if (a_slave['name'] == "TestIp"):
         //   // Test IP
         //   test_ip test_ip_i (

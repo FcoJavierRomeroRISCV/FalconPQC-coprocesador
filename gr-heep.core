@@ -14,6 +14,7 @@ filesets:
     - x-heep:ip:pad_control
     - openhwgroup.org:systems:core-v-mini-mcu
     files:
+    - hw/falcon_accel/rtl/falcon_accel.sv
     - hw/gr-heep/gr_heep_pkg.sv
     - hw/gr-heep/gr_heep_xbar.sv
     - hw/gr-heep/gr_heep_bus.sv
