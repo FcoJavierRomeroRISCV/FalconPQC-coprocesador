@@ -6,46 +6,123 @@ module falcon_accel (
     output reg_pkg::reg_rsp_t reg_rsp_o
 );
 
-  localparam logic [11:0] CTRL_OFFSET     = 12'h000;
-  localparam logic [11:0] STATUS_OFFSET   = 12'h004;
-  localparam logic [11:0] DATA_IN_OFFSET  = 12'h008;
-  localparam logic [11:0] DATA_OUT_OFFSET = 12'h00C;
+  localparam int unsigned NUM_WORDS = 4;
+  localparam int unsigned LATENCY_CYCLES = 8;
 
-  logic [31:0] data_in_q;
-  logic [31:0] data_out_q;
-  logic        done_q;
+  localparam logic [11:0] CTRL_OFFSET   = 12'h000;
+  localparam logic [11:0] STATUS_OFFSET = 12'h004;
+  localparam logic [11:0] DATA0_OFFSET  = 12'h008;
+  localparam logic [11:0] DATA1_OFFSET  = 12'h00C;
+  localparam logic [11:0] DATA2_OFFSET  = 12'h010;
+  localparam logic [11:0] DATA3_OFFSET  = 12'h014;
+
+  typedef enum logic [1:0] {
+    IDLE,
+    RUN,
+    DONE
+  } state_e;
+
+  state_e state_q, state_d;
+
+  logic [31:0] data_q [NUM_WORDS];
+  logic [31:0] data_d [NUM_WORDS];
 
   logic [31:0] rdata_d;
-  logic        unused_wstrb;
 
+  logic [3:0] cycle_cnt_q;
+  logic [3:0] cycle_cnt_d;
+
+  logic start_pulse;
+  logic clear_done;
+  logic busy;
+  logic done;
+
+  logic unused_wstrb;
   assign unused_wstrb = ^reg_req_i.wstrb;
+
+  assign start_pulse = reg_req_i.valid &&
+                       reg_req_i.write &&
+                       (reg_req_i.addr[11:0] == CTRL_OFFSET) &&
+                       reg_req_i.wdata[0];
+
+  assign clear_done = reg_req_i.valid &&
+                      reg_req_i.write &&
+                      (reg_req_i.addr[11:0] == CTRL_OFFSET) &&
+                      reg_req_i.wdata[1];
+
+  assign busy = (state_q == RUN);
+  assign done = (state_q == DONE);
+
+  always_comb begin
+    state_d     = state_q;
+    cycle_cnt_d = cycle_cnt_q;
+
+    for (int i = 0; i < NUM_WORDS; i++) begin
+      data_d[i] = data_q[i];
+    end
+
+    unique case (state_q)
+      IDLE: begin
+        cycle_cnt_d = 4'd0;
+
+        if (start_pulse) begin
+          state_d = RUN;
+        end
+      end
+
+      RUN: begin
+        if (cycle_cnt_q == LATENCY_CYCLES[3:0] - 1) begin
+          for (int i = 0; i < NUM_WORDS; i++) begin
+            data_d[i] = data_q[i] + 32'd1;
+          end
+
+          cycle_cnt_d = 4'd0;
+          state_d     = DONE;
+        end else begin
+          cycle_cnt_d = cycle_cnt_q + 4'd1;
+        end
+      end
+
+      DONE: begin
+        if (clear_done) begin
+          state_d = IDLE;
+        end else if (start_pulse) begin
+          state_d = RUN;
+        end
+      end
+
+      default: begin
+        state_d     = IDLE;
+        cycle_cnt_d = 4'd0;
+      end
+    endcase
+
+    if (reg_req_i.valid && reg_req_i.write) begin
+      unique case (reg_req_i.addr[11:0])
+        DATA0_OFFSET: data_d[0] = reg_req_i.wdata;
+        DATA1_OFFSET: data_d[1] = reg_req_i.wdata;
+        DATA2_OFFSET: data_d[2] = reg_req_i.wdata;
+        DATA3_OFFSET: data_d[3] = reg_req_i.wdata;
+        default: begin
+        end
+      endcase
+    end
+  end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      data_in_q  <= 32'h0;
-      data_out_q <= 32'h0;
-      done_q     <= 1'b0;
+      state_q     <= IDLE;
+      cycle_cnt_q <= 4'd0;
+
+      for (int i = 0; i < NUM_WORDS; i++) begin
+        data_q[i] <= 32'h0;
+      end
     end else begin
-      if (reg_req_i.valid && reg_req_i.write) begin
-        unique case (reg_req_i.addr[11:0])
-          CTRL_OFFSET: begin
-            if (reg_req_i.wdata[0]) begin
-              data_out_q <= data_in_q + 32'd1;
-              done_q     <= 1'b1;
-            end
-            if (reg_req_i.wdata[1]) begin
-              done_q <= 1'b0;
-            end
-          end
+      state_q     <= state_d;
+      cycle_cnt_q <= cycle_cnt_d;
 
-          DATA_IN_OFFSET: begin
-            data_in_q <= reg_req_i.wdata;
-            done_q    <= 1'b0;
-          end
-
-          default: begin
-          end
-        endcase
+      for (int i = 0; i < NUM_WORDS; i++) begin
+        data_q[i] <= data_d[i];
       end
     end
   end
@@ -59,15 +136,27 @@ module falcon_accel (
       end
 
       STATUS_OFFSET: begin
-        rdata_d = {31'b0, done_q};
+        rdata_d = {
+          30'b0,
+          busy,
+          done
+        };
       end
 
-      DATA_IN_OFFSET: begin
-        rdata_d = data_in_q;
+      DATA0_OFFSET: begin
+        rdata_d = data_q[0];
       end
 
-      DATA_OUT_OFFSET: begin
-        rdata_d = data_out_q;
+      DATA1_OFFSET: begin
+        rdata_d = data_q[1];
+      end
+
+      DATA2_OFFSET: begin
+        rdata_d = data_q[2];
+      end
+
+      DATA3_OFFSET: begin
+        rdata_d = data_q[3];
       end
 
       default: begin
