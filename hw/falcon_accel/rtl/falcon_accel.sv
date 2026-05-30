@@ -9,7 +9,8 @@ module falcon_accel (
   localparam int unsigned NUM_WORDS = 4;
   localparam int unsigned LATENCY_CYCLES = 8;
 
-  localparam logic [31:0] Q = 32'd12289;
+  localparam logic [31:0] Q   = 32'd12289;
+  localparam logic [31:0] Q0I = 32'd12287;
 
   localparam logic [11:0] CTRL_OFFSET   = 12'h000;
   localparam logic [11:0] STATUS_OFFSET = 12'h004;
@@ -39,11 +40,13 @@ module falcon_accel (
   logic busy;
   logic done;
 
-  logic [31:0] u;
-  logic [31:0] v;
-  logic [31:0] add_tmp;
-  logic [31:0] add_res;
-  logic [31:0] sub_res;
+  logic [31:0] x;
+  logic [31:0] y;
+
+  logic [31:0] mont_z;
+  logic [31:0] mont_w;
+  logic [31:0] mont_t;
+  logic [31:0] mont_res;
 
   logic unused_wstrb;
   assign unused_wstrb = ^reg_req_i.wstrb;
@@ -62,21 +65,17 @@ module falcon_accel (
   assign done = (state_q == DONE);
 
   always_comb begin
-    u = data_q[0];
-    v = data_q[1];
+    x = data_q[0];
+    y = data_q[1];
 
-    add_tmp = u + v;
+    mont_z = x * y;
+    mont_w = ((mont_z * Q0I) & 32'h0000FFFF) * Q;
+    mont_t = (mont_z + mont_w) >> 16;
 
-    if (add_tmp >= Q) begin
-      add_res = add_tmp - Q;
+    if (mont_t >= Q) begin
+      mont_res = mont_t - Q;
     end else begin
-      add_res = add_tmp;
-    end
-
-    if (u >= v) begin
-      sub_res = u - v;
-    end else begin
-      sub_res = u + Q - v;
+      mont_res = mont_t;
     end
   end
 
@@ -99,8 +98,7 @@ module falcon_accel (
 
       RUN: begin
         if (cycle_cnt_q == LATENCY_CYCLES[3:0] - 1) begin
-          data_d[0] = add_res;
-          data_d[1] = sub_res;
+          data_d[0] = mont_res;
 
           cycle_cnt_d = 4'd0;
           state_d     = DONE;
