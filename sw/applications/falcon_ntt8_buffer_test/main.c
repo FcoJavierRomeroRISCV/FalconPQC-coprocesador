@@ -4,12 +4,13 @@
 #include "mmio.h"
 #include "gr_heep.h"
 
-#define ACCEL_CTRL_OFFSET      0x00
-#define ACCEL_STATUS_OFFSET    0x04
-#define ACCEL_ADDR_OFFSET      0x08
-#define ACCEL_WDATA_OFFSET     0x0C
-#define ACCEL_RDATA_OFFSET     0x10
-#define ACCEL_SIZE_OFFSET      0x14
+#define ACCEL_CTRL_OFFSET        0x00
+#define ACCEL_STATUS_OFFSET      0x04
+#define ACCEL_ADDR_OFFSET        0x08
+#define ACCEL_WDATA_OFFSET       0x0C
+#define ACCEL_RDATA_OFFSET       0x10
+#define ACCEL_SIZE_OFFSET        0x14
+#define ACCEL_PERF_CYCLES_OFFSET 0x18
 
 #define ACCEL_CTRL_START        0x1
 #define ACCEL_CTRL_CLEAR_DONE   0x2
@@ -133,8 +134,11 @@ static uint32_t accel_wait_done(mmio_region_t accel) {
 static int run_ntt8_buffer_test(mmio_region_t ntt_accel, const uint32_t input[NTT8_SIZE]) {
     uint32_t ref[NTT8_SIZE];
     uint32_t hw[NTT8_SIZE];
+
     uint32_t status;
     uint32_t size;
+    uint32_t perf_cycles;
+
     int pass = 1;
 
     size = mmio_region_read32(ntt_accel, ACCEL_SIZE_OFFSET);
@@ -154,6 +158,8 @@ static int run_ntt8_buffer_test(mmio_region_t ntt_accel, const uint32_t input[NT
     accel_start(ntt_accel);
     status = accel_wait_done(ntt_accel);
 
+    perf_cycles = mmio_region_read32(ntt_accel, ACCEL_PERF_CYCLES_OFFSET);
+
     for (int i = 0; i < NTT8_SIZE; i++) {
         hw[i] = accel_read_buffer(ntt_accel, (uint32_t)i);
     }
@@ -170,6 +176,7 @@ static int run_ntt8_buffer_test(mmio_region_t ntt_accel, const uint32_t input[NT
     printf("]\n");
 
     printf("STATUS = 0x%08x\n", status);
+    printf("ACCEL cycles = %u\n", perf_cycles);
 
     for (int i = 0; i < NTT8_SIZE; i++) {
         printf("a[%d] hw=%u ref=%u\n", i, hw[i], ref[i]);

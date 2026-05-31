@@ -20,12 +20,13 @@ module falcon_ntt_accel (
   localparam logic [31:0] GMB_6 = 32'd6275;
   localparam logic [31:0] GMB_7 = 32'd9759;
 
-  localparam logic [11:0] CTRL_OFFSET   = 12'h000;
-  localparam logic [11:0] STATUS_OFFSET = 12'h004;
-  localparam logic [11:0] ADDR_OFFSET   = 12'h008;
-  localparam logic [11:0] WDATA_OFFSET  = 12'h00C;
-  localparam logic [11:0] RDATA_OFFSET  = 12'h010;
-  localparam logic [11:0] SIZE_OFFSET   = 12'h014;
+  localparam logic [11:0] CTRL_OFFSET        = 12'h000;
+  localparam logic [11:0] STATUS_OFFSET      = 12'h004;
+  localparam logic [11:0] ADDR_OFFSET        = 12'h008;
+  localparam logic [11:0] WDATA_OFFSET       = 12'h00C;
+  localparam logic [11:0] RDATA_OFFSET       = 12'h010;
+  localparam logic [11:0] SIZE_OFFSET        = 12'h014;
+  localparam logic [11:0] PERF_CYCLES_OFFSET = 12'h018;
 
   localparam logic [31:0] CTRL_START        = 32'h00000001;
   localparam logic [31:0] CTRL_CLEAR_DONE   = 32'h00000002;
@@ -56,6 +57,9 @@ module falcon_ntt_accel (
 
   logic [3:0] cycle_cnt_q;
   logic [3:0] cycle_cnt_d;
+
+  logic [31:0] perf_cycles_q;
+  logic [31:0] perf_cycles_d;
 
   logic start_pulse;
   logic clear_done;
@@ -159,8 +163,9 @@ module falcon_ntt_accel (
   endtask
 
   always_comb begin
-    state_d     = state_q;
-    cycle_cnt_d = cycle_cnt_q;
+    state_d       = state_q;
+    cycle_cnt_d   = cycle_cnt_q;
+    perf_cycles_d = perf_cycles_q;
 
     addr_d  = addr_q;
     wdata_d = wdata_q;
@@ -198,11 +203,14 @@ module falcon_ntt_accel (
         cycle_cnt_d = 4'd0;
 
         if (start_pulse) begin
-          state_d = RUN;
+          perf_cycles_d = 32'd0;
+          state_d       = RUN;
         end
       end
 
       RUN: begin
+        perf_cycles_d = perf_cycles_q + 32'd1;
+
         if (cycle_cnt_q == LATENCY_CYCLES[3:0] - 1) begin
           logic [31:0] s1_a0;
           logic [31:0] s1_a1;
@@ -270,34 +278,38 @@ module falcon_ntt_accel (
         if (clear_done) begin
           state_d = IDLE;
         end else if (start_pulse) begin
-          state_d = RUN;
+          perf_cycles_d = 32'd0;
+          state_d       = RUN;
         end
       end
 
       default: begin
-        state_d     = IDLE;
-        cycle_cnt_d = 4'd0;
+        state_d       = IDLE;
+        cycle_cnt_d   = 4'd0;
+        perf_cycles_d = 32'd0;
       end
     endcase
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      state_q     <= IDLE;
-      cycle_cnt_q <= 4'd0;
-      addr_q      <= 32'h0;
-      wdata_q     <= 32'h0;
-      rdata_q     <= 32'h0;
+      state_q       <= IDLE;
+      cycle_cnt_q   <= 4'd0;
+      perf_cycles_q <= 32'h0;
+      addr_q        <= 32'h0;
+      wdata_q       <= 32'h0;
+      rdata_q       <= 32'h0;
 
       for (int i = 0; i < BUFFER_WORDS; i++) begin
         buffer_q[i] <= 32'h0;
       end
     end else begin
-      state_q     <= state_d;
-      cycle_cnt_q <= cycle_cnt_d;
-      addr_q      <= addr_d;
-      wdata_q     <= wdata_d;
-      rdata_q     <= rdata_d;
+      state_q       <= state_d;
+      cycle_cnt_q   <= cycle_cnt_d;
+      perf_cycles_q <= perf_cycles_d;
+      addr_q        <= addr_d;
+      wdata_q       <= wdata_d;
+      rdata_q       <= rdata_d;
 
       for (int i = 0; i < BUFFER_WORDS; i++) begin
         buffer_q[i] <= buffer_d[i];
@@ -335,6 +347,10 @@ module falcon_ntt_accel (
 
       SIZE_OFFSET: begin
         reg_rdata_d = BUFFER_WORDS;
+      end
+
+      PERF_CYCLES_OFFSET: begin
+        reg_rdata_d = perf_cycles_q;
       end
 
       default: begin
