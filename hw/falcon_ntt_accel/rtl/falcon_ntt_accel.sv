@@ -6,7 +6,7 @@ module falcon_ntt_accel (
     output reg_pkg::reg_rsp_t reg_rsp_o
 );
 
-  localparam int unsigned NUM_WORDS = 4;
+  localparam int unsigned NUM_WORDS = 8;
   localparam int unsigned LATENCY_CYCLES = 8;
 
   localparam logic [31:0] Q   = 32'd12289;
@@ -15,6 +15,10 @@ module falcon_ntt_accel (
   localparam logic [31:0] GMB_1 = 32'd7888;
   localparam logic [31:0] GMB_2 = 32'd11060;
   localparam logic [31:0] GMB_3 = 32'd11208;
+  localparam logic [31:0] GMB_4 = 32'd6960;
+  localparam logic [31:0] GMB_5 = 32'd4342;
+  localparam logic [31:0] GMB_6 = 32'd6275;
+  localparam logic [31:0] GMB_7 = 32'd9759;
 
   localparam logic [11:0] CTRL_OFFSET   = 12'h000;
   localparam logic [11:0] STATUS_OFFSET = 12'h004;
@@ -22,6 +26,10 @@ module falcon_ntt_accel (
   localparam logic [11:0] DATA1_OFFSET  = 12'h00C;
   localparam logic [11:0] DATA2_OFFSET  = 12'h010;
   localparam logic [11:0] DATA3_OFFSET  = 12'h014;
+  localparam logic [11:0] DATA4_OFFSET  = 12'h018;
+  localparam logic [11:0] DATA5_OFFSET  = 12'h01C;
+  localparam logic [11:0] DATA6_OFFSET  = 12'h020;
+  localparam logic [11:0] DATA7_OFFSET  = 12'h024;
 
   typedef enum logic [1:0] {
     IDLE,
@@ -146,24 +154,56 @@ module falcon_ntt_accel (
           logic [31:0] s1_a1;
           logic [31:0] s1_a2;
           logic [31:0] s1_a3;
+          logic [31:0] s1_a4;
+          logic [31:0] s1_a5;
+          logic [31:0] s1_a6;
+          logic [31:0] s1_a7;
 
           logic [31:0] s2_a0;
           logic [31:0] s2_a1;
           logic [31:0] s2_a2;
           logic [31:0] s2_a3;
+          logic [31:0] s2_a4;
+          logic [31:0] s2_a5;
+          logic [31:0] s2_a6;
+          logic [31:0] s2_a7;
 
-          // Stage 1, m = 1, ht = 2, s = GMb[1]
-          ntt_butterfly(data_q[0], data_q[2], GMB_1, s1_a0, s1_a2);
-          ntt_butterfly(data_q[1], data_q[3], GMB_1, s1_a1, s1_a3);
+          logic [31:0] s3_a0;
+          logic [31:0] s3_a1;
+          logic [31:0] s3_a2;
+          logic [31:0] s3_a3;
+          logic [31:0] s3_a4;
+          logic [31:0] s3_a5;
+          logic [31:0] s3_a6;
+          logic [31:0] s3_a7;
 
-          // Stage 2, m = 2, ht = 1
-          ntt_butterfly(s1_a0, s1_a1, GMB_2, s2_a0, s2_a1);
-          ntt_butterfly(s1_a2, s1_a3, GMB_3, s2_a2, s2_a3);
+          // Stage 1, m = 1, ht = 4, s = GMb[1]
+          ntt_butterfly(data_q[0], data_q[4], GMB_1, s1_a0, s1_a4);
+          ntt_butterfly(data_q[1], data_q[5], GMB_1, s1_a1, s1_a5);
+          ntt_butterfly(data_q[2], data_q[6], GMB_1, s1_a2, s1_a6);
+          ntt_butterfly(data_q[3], data_q[7], GMB_1, s1_a3, s1_a7);
 
-          data_d[0] = s2_a0;
-          data_d[1] = s2_a1;
-          data_d[2] = s2_a2;
-          data_d[3] = s2_a3;
+          // Stage 2, m = 2, ht = 2
+          ntt_butterfly(s1_a0, s1_a2, GMB_2, s2_a0, s2_a2);
+          ntt_butterfly(s1_a1, s1_a3, GMB_2, s2_a1, s2_a3);
+
+          ntt_butterfly(s1_a4, s1_a6, GMB_3, s2_a4, s2_a6);
+          ntt_butterfly(s1_a5, s1_a7, GMB_3, s2_a5, s2_a7);
+
+          // Stage 3, m = 4, ht = 1
+          ntt_butterfly(s2_a0, s2_a1, GMB_4, s3_a0, s3_a1);
+          ntt_butterfly(s2_a2, s2_a3, GMB_5, s3_a2, s3_a3);
+          ntt_butterfly(s2_a4, s2_a5, GMB_6, s3_a4, s3_a5);
+          ntt_butterfly(s2_a6, s2_a7, GMB_7, s3_a6, s3_a7);
+
+          data_d[0] = s3_a0;
+          data_d[1] = s3_a1;
+          data_d[2] = s3_a2;
+          data_d[3] = s3_a3;
+          data_d[4] = s3_a4;
+          data_d[5] = s3_a5;
+          data_d[6] = s3_a6;
+          data_d[7] = s3_a7;
 
           cycle_cnt_d = 4'd0;
           state_d     = DONE;
@@ -192,6 +232,10 @@ module falcon_ntt_accel (
         DATA1_OFFSET: data_d[1] = reg_req_i.wdata;
         DATA2_OFFSET: data_d[2] = reg_req_i.wdata;
         DATA3_OFFSET: data_d[3] = reg_req_i.wdata;
+        DATA4_OFFSET: data_d[4] = reg_req_i.wdata;
+        DATA5_OFFSET: data_d[5] = reg_req_i.wdata;
+        DATA6_OFFSET: data_d[6] = reg_req_i.wdata;
+        DATA7_OFFSET: data_d[7] = reg_req_i.wdata;
         default: begin
         end
       endcase
@@ -246,6 +290,22 @@ module falcon_ntt_accel (
 
       DATA3_OFFSET: begin
         rdata_d = data_q[3];
+      end
+
+      DATA4_OFFSET: begin
+        rdata_d = data_q[4];
+      end
+
+      DATA5_OFFSET: begin
+        rdata_d = data_q[5];
+      end
+
+      DATA6_OFFSET: begin
+        rdata_d = data_q[6];
+      end
+
+      DATA7_OFFSET: begin
+        rdata_d = data_q[7];
       end
 
       default: begin

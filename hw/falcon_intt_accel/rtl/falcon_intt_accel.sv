@@ -6,7 +6,7 @@ module falcon_intt_accel (
     output reg_pkg::reg_rsp_t reg_rsp_o
 );
 
-  localparam int unsigned NUM_WORDS = 4;
+  localparam int unsigned NUM_WORDS = 8;
   localparam int unsigned LATENCY_CYCLES = 8;
 
   localparam logic [31:0] Q   = 32'd12289;
@@ -15,9 +15,13 @@ module falcon_intt_accel (
   localparam logic [31:0] IGMB_1 = 32'd4401;
   localparam logic [31:0] IGMB_2 = 32'd1081;
   localparam logic [31:0] IGMB_3 = 32'd1229;
+  localparam logic [31:0] IGMB_4 = 32'd2530;
+  localparam logic [31:0] IGMB_5 = 32'd6014;
+  localparam logic [31:0] IGMB_6 = 32'd7947;
+  localparam logic [31:0] IGMB_7 = 32'd5329;
 
-  // For n = 4, ni is computed from R = 4091 by the same logic used in mq_iNTT.
-  localparam logic [31:0] NI_N4 = 32'd1023;
+  // For n = 8, ni is computed from R = 4091 by the same logic used in mq_iNTT.
+  localparam logic [31:0] NI_N8 = 32'd8192;
 
   localparam logic [11:0] CTRL_OFFSET   = 12'h000;
   localparam logic [11:0] STATUS_OFFSET = 12'h004;
@@ -25,6 +29,10 @@ module falcon_intt_accel (
   localparam logic [11:0] DATA1_OFFSET  = 12'h00C;
   localparam logic [11:0] DATA2_OFFSET  = 12'h010;
   localparam logic [11:0] DATA3_OFFSET  = 12'h014;
+  localparam logic [11:0] DATA4_OFFSET  = 12'h018;
+  localparam logic [11:0] DATA5_OFFSET  = 12'h01C;
+  localparam logic [11:0] DATA6_OFFSET  = 12'h020;
+  localparam logic [11:0] DATA7_OFFSET  = 12'h024;
 
   typedef enum logic [1:0] {
     IDLE,
@@ -149,27 +157,60 @@ module falcon_intt_accel (
           logic [31:0] s1_a1;
           logic [31:0] s1_a2;
           logic [31:0] s1_a3;
+          logic [31:0] s1_a4;
+          logic [31:0] s1_a5;
+          logic [31:0] s1_a6;
+          logic [31:0] s1_a7;
 
           logic [31:0] s2_a0;
           logic [31:0] s2_a1;
           logic [31:0] s2_a2;
           logic [31:0] s2_a3;
+          logic [31:0] s2_a4;
+          logic [31:0] s2_a5;
+          logic [31:0] s2_a6;
+          logic [31:0] s2_a7;
 
-          // Stage 1: t = 1, m = 4, hm = 2
-          // butterflies (a0,a1) with iGMb[2], (a2,a3) with iGMb[3]
-          intt_butterfly(data_q[0], data_q[1], IGMB_2, s1_a0, s1_a1);
-          intt_butterfly(data_q[2], data_q[3], IGMB_3, s1_a2, s1_a3);
+          logic [31:0] s3_a0;
+          logic [31:0] s3_a1;
+          logic [31:0] s3_a2;
+          logic [31:0] s3_a3;
+          logic [31:0] s3_a4;
+          logic [31:0] s3_a5;
+          logic [31:0] s3_a6;
+          logic [31:0] s3_a7;
 
-          // Stage 2: t = 2, m = 2, hm = 1
-          // butterflies (a0,a2) and (a1,a3) with iGMb[1]
-          intt_butterfly(s1_a0, s1_a2, IGMB_1, s2_a0, s2_a2);
-          intt_butterfly(s1_a1, s1_a3, IGMB_1, s2_a1, s2_a3);
+          // Stage 1: t = 1, m = 8, hm = 4
+          // butterflies (a0,a1), (a2,a3), (a4,a5), (a6,a7)
+          intt_butterfly(data_q[0], data_q[1], IGMB_4, s1_a0, s1_a1);
+          intt_butterfly(data_q[2], data_q[3], IGMB_5, s1_a2, s1_a3);
+          intt_butterfly(data_q[4], data_q[5], IGMB_6, s1_a4, s1_a5);
+          intt_butterfly(data_q[6], data_q[7], IGMB_7, s1_a6, s1_a7);
 
-          // Final scaling by ni for n = 4.
-          data_d[0] = mq_montymul(s2_a0, NI_N4);
-          data_d[1] = mq_montymul(s2_a1, NI_N4);
-          data_d[2] = mq_montymul(s2_a2, NI_N4);
-          data_d[3] = mq_montymul(s2_a3, NI_N4);
+          // Stage 2: t = 2, m = 4, hm = 2
+          // butterflies (a0,a2), (a1,a3), (a4,a6), (a5,a7)
+          intt_butterfly(s1_a0, s1_a2, IGMB_2, s2_a0, s2_a2);
+          intt_butterfly(s1_a1, s1_a3, IGMB_2, s2_a1, s2_a3);
+
+          intt_butterfly(s1_a4, s1_a6, IGMB_3, s2_a4, s2_a6);
+          intt_butterfly(s1_a5, s1_a7, IGMB_3, s2_a5, s2_a7);
+
+          // Stage 3: t = 4, m = 2, hm = 1
+          // butterflies (a0,a4), (a1,a5), (a2,a6), (a3,a7)
+          intt_butterfly(s2_a0, s2_a4, IGMB_1, s3_a0, s3_a4);
+          intt_butterfly(s2_a1, s2_a5, IGMB_1, s3_a1, s3_a5);
+          intt_butterfly(s2_a2, s2_a6, IGMB_1, s3_a2, s3_a6);
+          intt_butterfly(s2_a3, s2_a7, IGMB_1, s3_a3, s3_a7);
+
+          // Final scaling by ni for n = 8.
+          data_d[0] = mq_montymul(s3_a0, NI_N8);
+          data_d[1] = mq_montymul(s3_a1, NI_N8);
+          data_d[2] = mq_montymul(s3_a2, NI_N8);
+          data_d[3] = mq_montymul(s3_a3, NI_N8);
+          data_d[4] = mq_montymul(s3_a4, NI_N8);
+          data_d[5] = mq_montymul(s3_a5, NI_N8);
+          data_d[6] = mq_montymul(s3_a6, NI_N8);
+          data_d[7] = mq_montymul(s3_a7, NI_N8);
 
           cycle_cnt_d = 4'd0;
           state_d     = DONE;
@@ -198,6 +239,10 @@ module falcon_intt_accel (
         DATA1_OFFSET: data_d[1] = reg_req_i.wdata;
         DATA2_OFFSET: data_d[2] = reg_req_i.wdata;
         DATA3_OFFSET: data_d[3] = reg_req_i.wdata;
+        DATA4_OFFSET: data_d[4] = reg_req_i.wdata;
+        DATA5_OFFSET: data_d[5] = reg_req_i.wdata;
+        DATA6_OFFSET: data_d[6] = reg_req_i.wdata;
+        DATA7_OFFSET: data_d[7] = reg_req_i.wdata;
         default: begin
         end
       endcase
@@ -252,6 +297,22 @@ module falcon_intt_accel (
 
       DATA3_OFFSET: begin
         rdata_d = data_q[3];
+      end
+
+      DATA4_OFFSET: begin
+        rdata_d = data_q[4];
+      end
+
+      DATA5_OFFSET: begin
+        rdata_d = data_q[5];
+      end
+
+      DATA6_OFFSET: begin
+        rdata_d = data_q[6];
+      end
+
+      DATA7_OFFSET: begin
+        rdata_d = data_q[7];
       end
 
       default: begin
