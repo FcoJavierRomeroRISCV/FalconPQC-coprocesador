@@ -26,9 +26,7 @@ extern "C" {
 #define FALCON_ACCEL_STATUS_BUSY        0x2
 
 void falcon_accel_clear_done(mmio_region_t accel);
-
 void falcon_accel_start(mmio_region_t accel);
-
 uint32_t falcon_accel_wait_done(mmio_region_t accel);
 
 void falcon_accel_write_buffer(
@@ -55,8 +53,12 @@ void falcon_accel_read_vector(
 );
 
 uint32_t falcon_accel_get_size(mmio_region_t accel);
-
 uint32_t falcon_accel_get_cycles(mmio_region_t accel);
+
+void falcon_accel_reset_counters(void);
+uint32_t falcon_accel_get_mmio_reads(void);
+uint32_t falcon_accel_get_mmio_writes(void);
+uint32_t falcon_accel_get_mmio_total(void);
 
 #ifdef __cplusplus
 }
