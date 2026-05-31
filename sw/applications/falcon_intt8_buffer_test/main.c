@@ -3,21 +3,7 @@
 
 #include "mmio.h"
 #include "gr_heep.h"
-
-#define ACCEL_CTRL_OFFSET        0x00
-#define ACCEL_STATUS_OFFSET      0x04
-#define ACCEL_ADDR_OFFSET        0x08
-#define ACCEL_WDATA_OFFSET       0x0C
-#define ACCEL_RDATA_OFFSET       0x10
-#define ACCEL_SIZE_OFFSET        0x14
-#define ACCEL_PERF_CYCLES_OFFSET 0x18
-
-#define ACCEL_CTRL_START        0x1
-#define ACCEL_CTRL_CLEAR_DONE   0x2
-#define ACCEL_CTRL_BUFFER_WRITE 0x4
-#define ACCEL_CTRL_BUFFER_READ  0x8
-
-#define ACCEL_STATUS_DONE       0x1
+#include "falcon_accel.h"
 
 #define FALCON_Q   12289u
 #define FALCON_Q0I 12287u
@@ -103,45 +89,17 @@ static void mini_intt8_ref(uint32_t a[INTT8_SIZE]) {
     }
 }
 
-static void accel_write_buffer(mmio_region_t accel, uint32_t index, uint32_t value) {
-    mmio_region_write32(accel, ACCEL_ADDR_OFFSET, index);
-    mmio_region_write32(accel, ACCEL_WDATA_OFFSET, value);
-    mmio_region_write32(accel, ACCEL_CTRL_OFFSET, ACCEL_CTRL_BUFFER_WRITE);
-}
-
-static uint32_t accel_read_buffer(mmio_region_t accel, uint32_t index) {
-    mmio_region_write32(accel, ACCEL_ADDR_OFFSET, index);
-    mmio_region_write32(accel, ACCEL_CTRL_OFFSET, ACCEL_CTRL_BUFFER_READ);
-    return mmio_region_read32(accel, ACCEL_RDATA_OFFSET);
-}
-
-static void accel_clear_done(mmio_region_t accel) {
-    mmio_region_write32(accel, ACCEL_CTRL_OFFSET, ACCEL_CTRL_CLEAR_DONE);
-}
-
-static void accel_start(mmio_region_t accel) {
-    mmio_region_write32(accel, ACCEL_CTRL_OFFSET, ACCEL_CTRL_START);
-}
-
-static uint32_t accel_wait_done(mmio_region_t accel) {
-    uint32_t status;
-
-    do {
-        status = mmio_region_read32(accel, ACCEL_STATUS_OFFSET);
-    } while ((status & ACCEL_STATUS_DONE) == 0);
-
-    return status;
-}
-
 static int run_intt8_buffer_test(mmio_region_t intt_accel, const uint32_t input[INTT8_SIZE]) {
     uint32_t ref[INTT8_SIZE];
     uint32_t hw[INTT8_SIZE];
+
     uint32_t status;
     uint32_t size;
-    uint32_t perf_cycles;
+    uint32_t cycles;
+
     int pass = 1;
 
-    size = mmio_region_read32(intt_accel, ACCEL_SIZE_OFFSET);
+    size = falcon_accel_get_size(intt_accel);
 
     for (int i = 0; i < INTT8_SIZE; i++) {
         ref[i] = input[i];
@@ -149,20 +107,15 @@ static int run_intt8_buffer_test(mmio_region_t intt_accel, const uint32_t input[
 
     mini_intt8_ref(ref);
 
-    accel_clear_done(intt_accel);
+    falcon_accel_clear_done(intt_accel);
+    falcon_accel_write_vector(intt_accel, input, INTT8_SIZE);
 
-    for (int i = 0; i < INTT8_SIZE; i++) {
-        accel_write_buffer(intt_accel, (uint32_t)i, input[i]);
-    }
+    falcon_accel_start(intt_accel);
+    status = falcon_accel_wait_done(intt_accel);
 
-    accel_start(intt_accel);
-    status = accel_wait_done(intt_accel);
+    cycles = falcon_accel_get_cycles(intt_accel);
 
-    perf_cycles = mmio_region_read32(intt_accel, ACCEL_PERF_CYCLES_OFFSET);
-
-    for (int i = 0; i < INTT8_SIZE; i++) {
-        hw[i] = accel_read_buffer(intt_accel, (uint32_t)i);
-    }
+    falcon_accel_read_vector(intt_accel, hw, INTT8_SIZE);
 
     printf("Buffer size = %u\n", size);
 
@@ -176,7 +129,7 @@ static int run_intt8_buffer_test(mmio_region_t intt_accel, const uint32_t input[
     printf("]\n");
 
     printf("STATUS = 0x%08x\n", status);
-    printf("ACCEL cycles = %u\n", perf_cycles);
+    printf("ACCEL cycles = %u\n", cycles);
 
     for (int i = 0; i < INTT8_SIZE; i++) {
         printf("a[%d] hw=%u ref=%u\n", i, hw[i], ref[i]);
@@ -186,10 +139,10 @@ static int run_intt8_buffer_test(mmio_region_t intt_accel, const uint32_t input[
     }
 
     if (pass) {
-        printf("iNTT8 buffer Test PASS\n");
+        printf("iNTT8 driver Test PASS\n");
         return 1;
     } else {
-        printf("iNTT8 buffer Test FAIL\n");
+        printf("iNTT8 driver Test FAIL\n");
         return 0;
     }
 }
@@ -216,7 +169,7 @@ int main(void) {
         12288, 12287, 1, 2, 4091, 7888, 11060, 11208
     };
 
-    printf("Falcon iNTT8 buffer interface test\n");
+    printf("Falcon iNTT8 driver test\n");
 
     pass &= run_intt8_buffer_test(intt_accel, test0);
     pass &= run_intt8_buffer_test(intt_accel, test1);
@@ -224,10 +177,10 @@ int main(void) {
     pass &= run_intt8_buffer_test(intt_accel, test3);
 
     if (pass) {
-        printf("Falcon iNTT8 buffer interface test PASS\n");
+        printf("Falcon iNTT8 driver test PASS\n");
         return 0;
     } else {
-        printf("Falcon iNTT8 buffer interface test FAIL\n");
+        printf("Falcon iNTT8 driver test FAIL\n");
         return 1;
     }
 }
