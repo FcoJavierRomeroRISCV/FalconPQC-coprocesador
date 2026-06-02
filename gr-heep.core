@@ -13,6 +13,7 @@ filesets:
     - x-heep::packages
     - x-heep:ip:pad_control
     - openhwgroup.org:systems:core-v-mini-mcu
+    - javier:ip:falcon_dma_loopback_accel
     files:
     - hw/falcon_ntt_accel/rtl/falcon_ntt_accel.sv
     - hw/falcon_intt_accel/rtl/falcon_intt_accel.sv

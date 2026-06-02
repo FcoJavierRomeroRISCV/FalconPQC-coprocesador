@@ -1,0 +1,18 @@
+CAPI=2:
+
+name: javier:ip:falcon_dma_loopback_accel
+description: Falcon DMA loopback accelerator test.
+
+filesets:
+  rtl:
+    files:
+    - rtl/dma_fifo_pkg.sv
+    - rtl/falcon_dma_loopback_accel.sv
+    - falcon_dma_loopback_accel.vlt : {file_type: vlt}
+    file_type: systemVerilogSource
+
+targets:
+  default:
+    filesets:
+    - rtl
+    toplevel: falcon_dma_loopback_accel

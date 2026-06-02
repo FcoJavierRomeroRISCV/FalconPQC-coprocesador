@@ -363,8 +363,8 @@ module gr_heep (
     assign heep_peripheral_rsp = '0;
   % endif
 
-  assign hw_fifo_done = '0;
-  assign hw_fifo_rsp = '0;
+  //assign hw_fifo_done = '0;
+  //assign hw_fifo_rsp = '0;
   assign ext_dma_slot_tx = '0;
   assign ext_dma_slot_rx = '0;
   % if (gr_heep["ext_interrupts"] == 0):
@@ -473,5 +473,31 @@ module gr_heep (
       .pad_muxes_o(pad_muxes)
     % endif
   );
+
+  // Falcon DMA loopback accelerator
+  // -------------------------------
+  falcon_dma_loopback_accel falcon_dma_loopback_accel_i (
+    .clk_i        (clk_in_x),
+    .rst_ni       (rst_nin_sync),
+    .fifo_req_done(hw_fifo_done[0]),
+    .fifo_req_i   (hw_fifo_req[0]),
+    .fifo_resp_o  (hw_fifo_rsp[0])
+  );
+
+  // Unused DMA HW FIFO channels.
+  for (genvar i = 1; i < core_v_mini_mcu_pkg::DMA_CH_NUM; i++) begin : gen_unused_hw_fifo_rsp
+    assign hw_fifo_rsp[i].empty    = 1'b1;
+    assign hw_fifo_rsp[i].full     = 1'b0;
+    assign hw_fifo_rsp[i].alm_full = 1'b0;
+    assign hw_fifo_rsp[i].data     = 32'h0;
+    assign hw_fifo_done[i]         = 1'b1;
+  end
+
+  logic unused_hw_fifo_req;
+
+  assign unused_hw_fifo_req =
+      ^hw_fifo_req[1] ^
+      ^hw_fifo_req[2] ^
+      ^hw_fifo_req[3];
 
 endmodule // gr_heep_top

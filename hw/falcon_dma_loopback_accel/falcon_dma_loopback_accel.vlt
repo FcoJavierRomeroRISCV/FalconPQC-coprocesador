@@ -1,0 +1,4 @@
+`verilator_config
+
+lint_off -rule SYNCASYNCNET -file "*falcon_dma_loopback_accel*"
+lint_off -rule UNUSEDSIGNAL -file "*falcon_dma_loopback_accel*"
