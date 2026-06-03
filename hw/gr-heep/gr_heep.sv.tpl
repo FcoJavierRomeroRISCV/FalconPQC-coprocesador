@@ -474,9 +474,9 @@ module gr_heep (
     % endif
   );
 
-  // Falcon DMA loopback accelerator
-  // -------------------------------
-  falcon_dma_loopback_accel falcon_dma_loopback_accel_i (
+  // Falcon NTT8 DMA accelerator
+  // ---------------------------
+  falcon_ntt_dma_accel falcon_ntt_dma_accel_i (
     .clk_i        (clk_in_x),
     .rst_ni       (rst_nin_sync),
     .fifo_req_done(hw_fifo_done[0]),
