@@ -11,7 +11,7 @@ module falcon_intt_dma_accel (
 
   localparam logic [31:0] Q   = 32'd12289;
   localparam logic [31:0] Q0I = 32'd12287;
-  localparam logic [31:0] NI8 = 32'd7681;   // R / 8 mod q for n = 8
+  localparam logic [31:0] NI8 = 32'd8192;   // R / 8 mod q for n = 8
 
   typedef enum logic [2:0] {
     S_INPUT,

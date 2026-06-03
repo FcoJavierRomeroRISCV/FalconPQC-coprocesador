@@ -68,10 +68,11 @@ static void intt8_ref(uint32_t a[INTT_SIZE]) {
     intt_butterfly_ref(&a[3], &a[7], 4401u);
 
     /*
-     * ni = R / 8 mod q para n = 8.
-     */
+    * ni = R / 8 mod q para n = 8.
+    * R = 4091, q = 12289, NI8 = 8192.
+    */
     for (uint32_t i = 0; i < INTT_SIZE; i++) {
-        a[i] = montgomery_ref(a[i], 7681u);
+        a[i] = montgomery_ref(a[i], 8192u);
     }
 }
 
