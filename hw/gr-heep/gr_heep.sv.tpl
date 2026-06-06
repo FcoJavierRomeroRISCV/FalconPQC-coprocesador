@@ -474,9 +474,9 @@ module gr_heep (
     % endif
   );
 
-  // Falcon NTT16 DMA accelerator
-  // ----------------------------
-  falcon_ntt16_dma_accel falcon_ntt16_dma_accel_i (
+  // Falcon iNTT16 DMA accelerator
+  // -----------------------------
+  falcon_intt16_dma_accel falcon_intt16_dma_accel_i (
     .clk_i        (clk_in_x),
     .rst_ni       (rst_nin_sync),
     .fifo_req_done(hw_fifo_done[0]),
