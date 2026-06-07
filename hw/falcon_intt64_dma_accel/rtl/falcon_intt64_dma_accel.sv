@@ -66,6 +66,7 @@ module falcon_intt64_dma_accel (
         29: get_igmb = 32'd10578;
         30: get_igmb = 32'd5882;
         31: get_igmb = 32'd11155;
+
         32: get_igmb = 32'd8417;
         33: get_igmb = 32'd12275;
         34: get_igmb = 32'd10599;
@@ -75,29 +76,30 @@ module falcon_intt64_dma_accel (
         38: get_igmb = 32'd5981;
         39: get_igmb = 32'd10108;
         40: get_igmb = 32'd4426;
-        41: get_igmb = 32'd8226;
-        42: get_igmb = 32'd2392;
-        43: get_igmb = 32'd8761;
-        44: get_igmb = 32'd9680;
-        45: get_igmb = 32'd5003;
-        46: get_igmb = 32'd4394;
-        47: get_igmb = 32'd11981;
-        48: get_igmb = 32'd10275;
-        49: get_igmb = 32'd4730;
-        50: get_igmb = 32'd8194;
-        51: get_igmb = 32'd6008;
-        52: get_igmb = 32'd3006;
-        53: get_igmb = 32'd131;
-        54: get_igmb = 32'd241;
-        55: get_igmb = 32'd6309;
-        56: get_igmb = 32'd8011;
-        57: get_igmb = 32'd11414;
-        58: get_igmb = 32'd2766;
-        59: get_igmb = 32'd11337;
-        60: get_igmb = 32'd834;
-        61: get_igmb = 32'd3725;
-        62: get_igmb = 32'd11336;
-        63: get_igmb = 32'd10276;
+        41: get_igmb = 32'd8306;
+        42: get_igmb = 32'd10755;
+        43: get_igmb = 32'd4679;
+        44: get_igmb = 32'd11052;
+        45: get_igmb = 32'd1538;
+        46: get_igmb = 32'd11857;
+        47: get_igmb = 32'd100;
+        48: get_igmb = 32'd8247;
+        49: get_igmb = 32'd6625;
+        50: get_igmb = 32'd9725;
+        51: get_igmb = 32'd5145;
+        52: get_igmb = 32'd3412;
+        53: get_igmb = 32'd7858;
+        54: get_igmb = 32'd5831;
+        55: get_igmb = 32'd9460;
+        56: get_igmb = 32'd5217;
+        57: get_igmb = 32'd10740;
+        58: get_igmb = 32'd7882;
+        59: get_igmb = 32'd7506;
+        60: get_igmb = 32'd12172;
+        61: get_igmb = 32'd11292;
+        62: get_igmb = 32'd6049;
+        63: get_igmb = 32'd79;
+
         default: get_igmb = 32'd0;
       endcase
     end

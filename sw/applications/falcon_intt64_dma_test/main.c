@@ -20,16 +20,18 @@ static const uint32_t iGMb[64] = {
     3109u, 2125u, 1960u, 10925u, 10601u, 10404u, 4189u, 1875u,
     5847u, 8546u, 4615u, 5190u, 11324u, 10578u, 5882u, 11155u,
     8417u, 12275u, 10599u, 7446u, 5719u, 3569u, 5981u, 10108u,
-    4426u, 8226u, 2392u, 8761u, 9680u, 5003u, 4394u, 11981u,
-    10275u, 4730u, 8194u, 6008u, 3006u, 131u, 241u, 6309u,
-    8011u, 11414u, 2766u, 11337u, 834u, 3725u, 11336u, 10276u
+    4426u, 8306u, 10755u, 4679u, 11052u, 1538u, 11857u, 100u,
+    8247u, 6625u, 9725u, 5145u, 3412u, 7858u, 5831u, 9460u,
+    5217u, 10740u, 7882u, 7506u, 12172u, 11292u, 6049u, 79u
 };
 
 static uint32_t mod_add_ref(uint32_t u, uint32_t v) {
     uint32_t tmp = u + v;
+
     if (tmp >= FALCON_Q) {
         tmp -= FALCON_Q;
     }
+
     return tmp;
 }
 
@@ -37,6 +39,7 @@ static uint32_t mod_sub_ref(uint32_t u, uint32_t v) {
     if (u >= v) {
         return u - v;
     }
+
     return u + FALCON_Q - v;
 }
 
@@ -106,6 +109,7 @@ static void print_first_last(const char *name, uint32_t v[INTT_SIZE]) {
 
     for (uint32_t i = 0; i < 8u; i++) {
         printf("%u", v[i]);
+
         if (i != 7u) {
             printf(", ");
         }
@@ -117,6 +121,7 @@ static void print_first_last(const char *name, uint32_t v[INTT_SIZE]) {
 
     for (uint32_t i = INTT_SIZE - 8u; i < INTT_SIZE; i++) {
         printf("%u", v[i]);
+
         if (i != INTT_SIZE - 1u) {
             printf(", ");
         }
