@@ -1,0 +1,17 @@
+CAPI=2:
+
+name: javier:ip:falcon_ntt256_dma_accel
+description: Falcon NTT256 DMA HW FIFO accelerator.
+
+filesets:
+  rtl:
+    files:
+    - rtl/falcon_ntt256_dma_accel.sv
+    - falcon_ntt256_dma_accel.vlt : {file_type: vlt}
+    file_type: systemVerilogSource
+
+targets:
+  default:
+    filesets:
+    - rtl
+    toplevel: falcon_ntt256_dma_accel

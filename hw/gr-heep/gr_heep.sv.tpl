@@ -474,9 +474,9 @@ module gr_heep (
     % endif
   );
 
-  // Falcon NTT64 DMA accelerator
-  // ----------------------------
-  falcon_ntt64_dma_accel falcon_ntt64_dma_accel_i (
+  // Falcon NTT256 DMA accelerator
+  // -----------------------------
+  falcon_ntt256_dma_accel falcon_ntt256_dma_accel_i (
     .clk_i        (clk_in_x),
     .rst_ni       (rst_nin_sync),
     .fifo_req_done(hw_fifo_done[0]),
@@ -484,18 +484,8 @@ module gr_heep (
     .fifo_resp_o  (hw_fifo_rsp[0])
   );
 
-  // Falcon iNTT64 DMA accelerator
-  // -----------------------------
-  falcon_intt64_dma_accel falcon_intt64_dma_accel_i (
-    .clk_i        (clk_in_x),
-    .rst_ni       (rst_nin_sync),
-    .fifo_req_done(hw_fifo_done[1]),
-    .fifo_req_i   (hw_fifo_req[1]),
-    .fifo_resp_o  (hw_fifo_rsp[1])
-  );
-
   // Unused DMA HW FIFO channels.
-  for (genvar i = 2; i < core_v_mini_mcu_pkg::DMA_CH_NUM; i++) begin : gen_unused_hw_fifo_rsp
+  for (genvar i = 1; i < core_v_mini_mcu_pkg::DMA_CH_NUM; i++) begin : gen_unused_hw_fifo_rsp
     assign hw_fifo_rsp[i].empty    = 1'b1;
     assign hw_fifo_rsp[i].full     = 1'b0;
     assign hw_fifo_rsp[i].alm_full = 1'b0;
@@ -506,6 +496,7 @@ module gr_heep (
   logic unused_hw_fifo_req;
 
   assign unused_hw_fifo_req =
+      ^hw_fifo_req[1] ^
       ^hw_fifo_req[2] ^
       ^hw_fifo_req[3];
 endmodule // gr_heep_top
