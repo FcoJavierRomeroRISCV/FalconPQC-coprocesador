@@ -19,6 +19,7 @@ filesets:
     - javier:ip:falcon_ntt16_dma_accel
     - javier:ip:falcon_intt16_dma_accel
     - javier:ip:falcon_ntt32_dma_accel
+    - javier:ip:falcon_intt32_dma_accel
     files:
     - hw/falcon_ntt_accel/rtl/falcon_ntt_accel.sv
     - hw/falcon_intt_accel/rtl/falcon_intt_accel.sv
