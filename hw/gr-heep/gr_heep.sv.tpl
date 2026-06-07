@@ -474,9 +474,9 @@ module gr_heep (
     % endif
   );
 
-  // Falcon iNTT32 DMA accelerator
-  // -----------------------------
-  falcon_intt32_dma_accel falcon_intt32_dma_accel_i (
+  // Falcon NTT32 DMA accelerator
+  // ----------------------------
+  falcon_ntt32_dma_accel falcon_ntt32_dma_accel_i (
     .clk_i        (clk_in_x),
     .rst_ni       (rst_nin_sync),
     .fifo_req_done(hw_fifo_done[0]),
@@ -484,9 +484,9 @@ module gr_heep (
     .fifo_resp_o  (hw_fifo_rsp[0])
   );
 
-  // Falcon iNTT16 DMA accelerator
+  // Falcon iNTT32 DMA accelerator
   // -----------------------------
-  falcon_intt16_dma_accel falcon_intt16_dma_accel_i (
+  falcon_intt32_dma_accel falcon_intt32_dma_accel_i (
     .clk_i        (clk_in_x),
     .rst_ni       (rst_nin_sync),
     .fifo_req_done(hw_fifo_done[1]),
