@@ -474,9 +474,9 @@ module gr_heep (
     % endif
   );
 
-  // Falcon NTT32 DMA accelerator
+  // Falcon NTT64 DMA accelerator
   // ----------------------------
-  falcon_ntt32_dma_accel falcon_ntt32_dma_accel_i (
+  falcon_ntt64_dma_accel falcon_ntt64_dma_accel_i (
     .clk_i        (clk_in_x),
     .rst_ni       (rst_nin_sync),
     .fifo_req_done(hw_fifo_done[0]),
