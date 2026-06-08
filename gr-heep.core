@@ -25,6 +25,7 @@ filesets:
     - javier:ip:falcon_ntt256_dma_accel
     - javier:ip:falcon_intt256_dma_accel
     - javier:ip:falcon_ntt512_dma_accel
+    - javier:ip:falcon_intt512_dma_accel
     files:
     - hw/falcon_ntt_accel/rtl/falcon_ntt_accel.sv
     - hw/falcon_intt_accel/rtl/falcon_intt_accel.sv
